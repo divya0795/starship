@@ -183,7 +183,7 @@ fn get_gradle_version(context: &Context, config: &PackageConfig) -> Option<Strin
             let build_file_contents = context
                 .read_file_from_pwd("build.gradle")
                 .or_else(|| context.read_file_from_pwd("build.gradle.kts"))?;
-            let re = Regex::new(r#"(?m)^version( |\s*=\s*)['"](?P<version>[^'"]+)['"]$"#).unwrap(); /*dark magic*/
+            let re = Regex::new(r#"(?mR)^version( |\s*=\s*)['"](?P<version>[^'"]+)['"]$"#).unwrap(); /*dark magic*/
             let caps = re.captures(&build_file_contents)?;
             format_version(&caps["version"], config.version_format)
 
@@ -1230,6 +1230,27 @@ java {
         fill_config(&project_dir, config_name, Some(config_content))?;
         expect_output(&project_dir, Some("v0.1.0"), None);
         project_dir.close()
+    }
+
+    #[test]
+    fn test_extract_gradle_version_crlf() -> io::Result<()> {
+        // e.g. a Windows checkout with `core.autocrlf=true`
+        for (config_name, config_content) in [
+            (
+                "build.gradle",
+                "plugins {\r\n    id 'java'\r\n}\r\nversion '0.1.0'\r\n",
+            ),
+            (
+                "build.gradle.kts",
+                "plugins {\r\n    id(\"java\")\r\n}\r\nversion = \"0.1.0\"\r\n",
+            ),
+        ] {
+            let project_dir = create_project_dir()?;
+            fill_config(&project_dir, config_name, Some(config_content))?;
+            expect_output(&project_dir, Some("v0.1.0"), None);
+            project_dir.close()?;
+        }
+        Ok(())
     }
 
     #[test]
