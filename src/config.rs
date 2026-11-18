@@ -437,7 +437,7 @@ fn parse_color_string(
     log::trace!("Parsing color_string: {color_string}");
     if color_string.starts_with('#') {
         log::trace!("Attempting to read hexadecimal color string: {color_string}");
-        if color_string.len() != 7 {
+        if color_string.len() != 7 || !color_string.is_ascii() {
             log::debug!("Could not parse hexadecimal string: {color_string}");
             return None;
         }
@@ -702,6 +702,13 @@ mod tests {
         assert!(<StyleWrapper>::from_config(&config).is_err());
 
         let config = Value::from("#NOTHEX");
+        assert!(<StyleWrapper>::from_config(&config).is_err());
+
+        // 7 bytes, but not 7 ASCII characters: must not panic slicing inside a char
+        let config = Value::from("#fé000");
+        assert!(<StyleWrapper>::from_config(&config).is_err());
+
+        let config = Value::from("#ff€0");
         assert!(<StyleWrapper>::from_config(&config).is_err());
 
         let config = Value::from("#a12BcD");
